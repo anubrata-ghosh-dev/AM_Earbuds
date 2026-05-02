@@ -15,7 +15,7 @@ html {
 body {
     background-color: #000000;
     color: #ffffff;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     line-height: 1.6;
     overflow-x: hidden;
 }
@@ -85,9 +85,9 @@ body {
 .navbar-links a {
     text-decoration: none;
     color: #ffffff;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     font-weight: 500;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.3px;
     transition: color 0.3s ease;
 }
 
@@ -154,20 +154,19 @@ body {
     text-transform: uppercase;
     color: #ffffff;
     position: relative;
-    font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family: 'Montserrat', 'Inter', sans-serif;
     line-height: 1;
     text-shadow: 0 2px 40px rgba(0, 0, 0, 0.5);
 }
 
 .hero-subtitle {
-    font-size: 1rem;
-    font-weight: 400;
+    font-size: 0.85rem;
+    font-weight: 500;
     letter-spacing: 4px;
     color: rgba(255, 255, 255, 0.6);
     margin: 1.2rem 0 0 0;
     text-transform: uppercase;
     position: relative;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
 @keyframes fadeInText {
@@ -439,14 +438,17 @@ body {
 .cta-image {
     overflow: hidden;
     border-radius: 12px;
-    height: 400px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .cta-image img {
     width: 100%;
-    height: 100%;
-    object-fit: cover;
+    height: auto;
+    object-fit: contain;
     display: block;
+    border-radius: 12px;
 }
 
 .cta-text {
