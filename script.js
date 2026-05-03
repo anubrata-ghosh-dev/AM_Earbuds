@@ -143,47 +143,38 @@ class FrameAnimation {
     }
 
     /**
-     * UPDATE FRAME BASED ON SCROLL THROUGH THE ANIMATION CONTAINER
-     * Canvas is now FIXED, so we map entire page scroll to frame progression
+     * Maps scroll progress to the specific frame sequence.
+     * Handles the initial fast transition and hero text fading.
      */
     updateFrameFromScroll() {
-        // Get scroll container boundaries
         const containerTop = this.scrollContainer.offsetTop;
-        const containerHeight = this.scrollContainer.offsetHeight;  // Height of scroll-spacer (700vh)
-
-        // Current scroll position
+        const containerHeight = this.scrollContainer.offsetHeight;
         const scrollY = window.scrollY;
 
-        // Calculate how far we've scrolled INTO the container (relative to container start)
+        // Calculate progress within the scroll container (0 to 1)
         const scrollIntoContainer = Math.max(0, scrollY - containerTop);
-
-        // Calculate progress through the container (0 to 1)
-        let progress = 0;
-        if (containerHeight > 0) {
-            progress = scrollIntoContainer / containerHeight;
-        }
-
-        // Clamp progress to valid range
+        let progress = containerHeight > 0 ? scrollIntoContainer / containerHeight : 0;
         progress = Math.max(0, Math.min(1, progress));
 
-        // Map progress to frame index, skipping initial blank frame
-        // Make the first 5 frames move slowly, then speed up for the rest
+        // Mapping Logic: First 5% of scroll handles initial 5 frames for a quick reveal
         const startFrame = 1;
-        const slowFrameTarget = 5;
-        const slowPhaseScrollLimit = 0.2; // First 20% of scroll for frames 1-5
+        const quickFrameTarget = 5;
+        const quickPhaseScrollLimit = 0.05;
 
-        if (progress <= slowPhaseScrollLimit) {
-            const p = progress / slowPhaseScrollLimit;
-            this.targetFrame = startFrame + Math.floor(p * (slowFrameTarget - startFrame));
+        if (progress <= quickPhaseScrollLimit) {
+            const p = progress / quickPhaseScrollLimit;
+            this.targetFrame = startFrame + (p * (quickFrameTarget - startFrame));
         } else {
-            const p = (progress - slowPhaseScrollLimit) / (1 - slowPhaseScrollLimit);
-            this.targetFrame = slowFrameTarget + Math.floor(p * (this.totalFrames - 1 - slowFrameTarget));
+            const p = (progress - quickPhaseScrollLimit) / (1 - quickPhaseScrollLimit);
+            this.targetFrame = quickFrameTarget + (p * (this.totalFrames - 1 - quickFrameTarget));
         }
+
+        // Clamp final target frame
         this.targetFrame = Math.max(startFrame, Math.min(this.totalFrames - 1, this.targetFrame));
 
-        // FADE OUT HERO TEXT based on sequence length
-        const fadeStart = Math.floor(this.totalFrames * 0.08); // e.g. 10 frames on desktop, 12 on mobile
-        const fadeEnd = Math.floor(this.totalFrames * 0.16);   // e.g. 20 frames on desktop, 25 on mobile
+        // Handle Hero Text Fade (8% - 16% progress)
+        const fadeStart = Math.floor(this.totalFrames * 0.08);
+        const fadeEnd = Math.floor(this.totalFrames * 0.16);
 
         if (this.targetFrame <= fadeStart) {
             this.heroOverlay.style.opacity = 1;
@@ -194,25 +185,14 @@ class FrameAnimation {
             this.heroOverlay.style.opacity = 0;
         }
 
-        // HIDE CANVAS after last frame so transition section is visible
-        const frameCompleteThreshold = 0.98; // 98% through the container = near end
+        // Smoothly fade out canvas at the very end of the scroll container
+        const frameCompleteThreshold = 0.98;
         if (progress > frameCompleteThreshold) {
             this.canvas.style.opacity = Math.max(0, 1 - (progress - frameCompleteThreshold) / 0.02);
             this.canvas.style.pointerEvents = 'none';
         } else {
             this.canvas.style.opacity = 1;
             this.canvas.style.pointerEvents = 'auto';
-        }
-
-        // Log progress regularly (not every scroll event)
-        const currentTime = performance.now();
-        if (currentTime - this.lastLogTime > 500) {
-            const heroOpacity = parseFloat(this.heroOverlay.style.opacity || 1);
-            const canvasOpacity = parseFloat(this.canvas.style.opacity || 1);
-            console.log(
-                `📍 ScrollY: ${scrollY.toFixed(0)}px | Into Container: ${scrollIntoContainer.toFixed(0)}px | Progress: ${(progress * 100).toFixed(1)}% | Frame: ${this.targetFrame}/${this.totalFrames - 1} | TextOpacity: ${heroOpacity.toFixed(2)} | CanvasOpacity: ${canvasOpacity.toFixed(2)}`
-            );
-            this.lastLogTime = currentTime;
         }
     }
 
@@ -228,30 +208,22 @@ class FrameAnimation {
     }
 
     /**
-     * Render a specific frame to canvas with pixel-perfect scaling
+     * Renders a frame to the canvas.
+     * Handles fitting/covering based on device type and aspect ratio.
      */
     renderFrame(frameIndex) {
-        // Clamp index
         frameIndex = Math.max(0, Math.min(this.totalFrames - 1, frameIndex));
-
         const img = this.images[frameIndex];
 
-        if (!img || !img.complete) {
-            return; // Image not ready yet
-        }
+        if (!img || !img.complete) return;
 
-        // Disable smoothing for crisp pixel-perfect rendering
-        this.ctx.imageSmoothingEnabled = false;
-
-        // Get logical canvas dimensions (CSS size, not physical pixel size)
         const canvasWidth = window.innerWidth;
         const canvasHeight = window.innerHeight;
 
-        // Clear canvas with black background
+        // Clear canvas with background color
         this.ctx.fillStyle = '#000000';
         this.ctx.fillRect(0, 0, canvasWidth, canvasHeight);
 
-        // Calculate scaling to fit image to canvas while maintaining aspect ratio
         const canvasAspect = canvasWidth / canvasHeight;
         const imgAspect = img.width / img.height;
 
@@ -261,7 +233,7 @@ class FrameAnimation {
         let offsetY = 0;
 
         if (this.isMobile) {
-            // COVER for mobile to fill screen impactfully
+            // COVER for mobile to fill screen
             if (imgAspect > canvasAspect) {
                 drawHeight = canvasHeight;
                 drawWidth = canvasHeight * imgAspect;
@@ -272,7 +244,7 @@ class FrameAnimation {
                 offsetY = (canvasHeight - drawHeight) / 2;
             }
         } else {
-            // CONTAIN for desktop
+            // CONTAIN for desktop to show full image
             if (imgAspect > canvasAspect) {
                 drawHeight = canvasWidth / imgAspect;
                 offsetY = (canvasHeight - drawHeight) / 2;
@@ -282,9 +254,7 @@ class FrameAnimation {
             }
         }
 
-        // Draw image centered on canvas with pixel-perfect rendering
         this.ctx.drawImage(img, offsetX, offsetY, drawWidth, drawHeight);
-
         this.lastRenderedFrame = frameIndex;
     }
 
@@ -296,7 +266,7 @@ class FrameAnimation {
         const loop = () => {
             // Smooth interpolation between current and target frame
             const diff = this.targetFrame - this.currentFrame;
-            this.currentFrame += diff * 0.1; // 10% per frame
+            this.currentFrame += diff * 0.3; // Increased to 0.3 for maximum responsiveness and consistency in both directions
 
             // Round to nearest frame for rendering
             const roundedFrame = Math.round(this.currentFrame);
@@ -323,40 +293,30 @@ class FrameAnimation {
 }
 
 /**
- * Initialize the frame animation when DOM is ready
+ * Reveal animation on scroll
  */
-document.addEventListener('DOMContentLoaded', () => {
-    console.log('🚀 DOM Content Loaded - Starting initialization...');
-    const frameAnimation = new FrameAnimation();
-
-    // CTA button is now a link, so no additional click handler needed
-    // The href and target attributes handle the navigation
-});
-
-/**
- * Performance monitoring (optional)
- * Uncomment to log performance metrics
- */
-/*
-let frameCount = 0;
-let lastTime = performance.now();
-
-function logPerformance() {
-    const currentTime = performance.now();
-    const deltaTime = currentTime - lastTime;
+const initScrollReveal = () => {
+    const reveals = document.querySelectorAll('.reveal');
     
-    if (deltaTime >= 1000) {
-        const fps = Math.round((frameCount * 1000) / deltaTime);
-        console.log(`FPS: ${fps}`);
-        frameCount = 0;
-        lastTime = currentTime;
-    }
+    const observerOptions = {
+        threshold: 0.15,
+        rootMargin: '0px 0px -50px 0px'
+    };
     
-    frameCount++;
-    requestAnimationFrame(logPerformance);
-}
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('active');
+            }
+        });
+    }, observerOptions);
+    
+    reveals.forEach(reveal => {
+        observer.observe(reveal);
+    });
+};
 
 document.addEventListener('DOMContentLoaded', () => {
-    logPerformance();
+    new FrameAnimation();
+    initScrollReveal();
 });
-*/
