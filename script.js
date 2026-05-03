@@ -40,10 +40,10 @@ class FrameAnimation {
     updateConfig() {
         if (this.isMobile) {
             this.totalFrames = 160;
-            this.sequencePath = 'sequence_mobile/ezgif-frame-';
+            this.sequencePath = 'assets/sequence_mobile/ezgif-frame-';
         } else {
             this.totalFrames = 120;
-            this.sequencePath = 'sequence_1/ezgif-frame-';
+            this.sequencePath = 'assets/sequence/ezgif-frame-';
         }
     }
 
