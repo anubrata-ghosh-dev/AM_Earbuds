@@ -166,9 +166,19 @@ class FrameAnimation {
         // Clamp progress to valid range
         progress = Math.max(0, Math.min(1, progress));
 
-        // Map progress to frame index, starting at frame 2 (index 2) to skip initial blank frames
+        // Map progress to frame index, skipping initial blank frame
+        // Make the first 5 frames move slowly, then speed up for the rest
         const startFrame = 1;
-        this.targetFrame = startFrame + Math.floor(progress * (this.totalFrames - 1 - startFrame));
+        const slowFrameTarget = 5;
+        const slowPhaseScrollLimit = 0.2; // First 20% of scroll for frames 1-5
+
+        if (progress <= slowPhaseScrollLimit) {
+            const p = progress / slowPhaseScrollLimit;
+            this.targetFrame = startFrame + Math.floor(p * (slowFrameTarget - startFrame));
+        } else {
+            const p = (progress - slowPhaseScrollLimit) / (1 - slowPhaseScrollLimit);
+            this.targetFrame = slowFrameTarget + Math.floor(p * (this.totalFrames - 1 - slowFrameTarget));
+        }
         this.targetFrame = Math.max(startFrame, Math.min(this.totalFrames - 1, this.targetFrame));
 
         // FADE OUT HERO TEXT based on sequence length
