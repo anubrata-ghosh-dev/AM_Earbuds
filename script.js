@@ -13,8 +13,8 @@
 class FrameAnimation {
     constructor() {
         // Configuration
-        this.totalFrames = 120;
-        this.sequencePath = 'sequence_1/ezgif-frame-';
+        this.isMobile = window.innerWidth <= 768;
+        this.updateConfig();
         this.frameExtension = '.jpg';
 
         // DOM elements
@@ -27,14 +27,38 @@ class FrameAnimation {
 
         // State
         this.images = [];
-        this.currentFrame = 0;
-        this.targetFrame = 0;
+        this.currentFrame = 1;
+        this.targetFrame = 1;
         this.lastRenderedFrame = -1;
         this.animationFrameId = null;
         this.lastLogTime = 0;
 
         // Initialize
         this.init();
+    }
+
+    updateConfig() {
+        if (this.isMobile) {
+            this.totalFrames = 160;
+            this.sequencePath = 'sequence_mobile/ezgif-frame-';
+        } else {
+            this.totalFrames = 120;
+            this.sequencePath = 'sequence_1/ezgif-frame-';
+        }
+    }
+
+    handleResize() {
+        this.resizeCanvas();
+        const wasMobile = this.isMobile;
+        this.isMobile = window.innerWidth <= 768;
+
+        if (wasMobile !== this.isMobile) {
+            console.log('🔄 Breakpoint crossed, reloading animation sequence...');
+            this.updateConfig();
+            this.images = [];
+            this.preloadAllImages();
+            this.updateFrameFromScroll();
+        }
     }
 
     /**
@@ -47,7 +71,7 @@ class FrameAnimation {
 
         // Setup canvas
         this.resizeCanvas();
-        window.addEventListener('resize', () => this.resizeCanvas());
+        window.addEventListener('resize', () => this.handleResize());
 
         // Preload all images
         this.preloadAllImages();
@@ -142,15 +166,19 @@ class FrameAnimation {
         // Clamp progress to valid range
         progress = Math.max(0, Math.min(1, progress));
 
-        // Map progress to frame index (0 to 191)
-        this.targetFrame = Math.floor(progress * (this.totalFrames - 1));
-        this.targetFrame = Math.max(0, Math.min(this.totalFrames - 1, this.targetFrame));
+        // Map progress to frame index, starting at frame 2 (index 2) to skip initial blank frames
+        const startFrame = 1;
+        this.targetFrame = startFrame + Math.floor(progress * (this.totalFrames - 1 - startFrame));
+        this.targetFrame = Math.max(startFrame, Math.min(this.totalFrames - 1, this.targetFrame));
 
-        // FADE OUT HERO TEXT so it completely disappears by frame 20
-        if (this.targetFrame <= 10) {
+        // FADE OUT HERO TEXT based on sequence length
+        const fadeStart = Math.floor(this.totalFrames * 0.08); // e.g. 10 frames on desktop, 12 on mobile
+        const fadeEnd = Math.floor(this.totalFrames * 0.16);   // e.g. 20 frames on desktop, 25 on mobile
+
+        if (this.targetFrame <= fadeStart) {
             this.heroOverlay.style.opacity = 1;
-        } else if (this.targetFrame <= 20) {
-            const fadeProgress = (this.targetFrame - 10) / 10;
+        } else if (this.targetFrame <= fadeEnd) {
+            const fadeProgress = (this.targetFrame - fadeStart) / (fadeEnd - fadeStart);
             this.heroOverlay.style.opacity = 1 - fadeProgress;
         } else {
             this.heroOverlay.style.opacity = 0;
@@ -182,7 +210,7 @@ class FrameAnimation {
      * Update navbar appearance on scroll
      */
     updateNavbar() {
-        if (window.scrollY > 50) {
+        if (this.targetFrame >= this.totalFrames - 1) {
             this.navbar.classList.add('scrolled');
         } else {
             this.navbar.classList.remove('scrolled');
@@ -222,14 +250,26 @@ class FrameAnimation {
         let offsetX = 0;
         let offsetY = 0;
 
-        if (imgAspect > canvasAspect) {
-            // Image is wider than canvas - fit to height
-            drawHeight = canvasWidth / imgAspect;
-            offsetY = (canvasHeight - drawHeight) / 2;
+        if (this.isMobile) {
+            // COVER for mobile to fill screen impactfully
+            if (imgAspect > canvasAspect) {
+                drawHeight = canvasHeight;
+                drawWidth = canvasHeight * imgAspect;
+                offsetX = (canvasWidth - drawWidth) / 2;
+            } else {
+                drawWidth = canvasWidth;
+                drawHeight = canvasWidth / imgAspect;
+                offsetY = (canvasHeight - drawHeight) / 2;
+            }
         } else {
-            // Image is taller than canvas - fit to width
-            drawWidth = canvasHeight * imgAspect;
-            offsetX = (canvasWidth - drawWidth) / 2;
+            // CONTAIN for desktop
+            if (imgAspect > canvasAspect) {
+                drawHeight = canvasWidth / imgAspect;
+                offsetY = (canvasHeight - drawHeight) / 2;
+            } else {
+                drawWidth = canvasHeight * imgAspect;
+                offsetX = (canvasWidth - drawWidth) / 2;
+            }
         }
 
         // Draw image centered on canvas with pixel-perfect rendering
